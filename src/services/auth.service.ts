@@ -10,8 +10,6 @@ import {
 import { hashPassword, verifyPassword } from '../utils/password.util';
 import { signToken } from '../utils/jwt.util';
 
-// ─── DTOs ──────────────────────────────────────────────────────────────────
-
 export interface RegisterOrgAdminDto {
   org_name: string;
   gst_no: string;
@@ -28,27 +26,10 @@ export interface LoginDto {
   password: string;
 }
 
-// ─── REGISTER ──────────────────────────────────────────────────────────────
 
-/**
- * Registers a new organization along with its first admin user.
- *
- * Transaction steps:
- *  1. Check email not already in use globally (prevent confusion)
- *  2. Check GST not already registered
- *  3. Generate tenant_id (UUID)
- *  4. Create Organization (status = inactive — awaiting superadmin approval)
- *  5. Seed an "org_admin" system role for this tenant
- *  6. Create User (status = pending, password hashed)
- *
- * The org admin CANNOT log in until:
- *   - SuperAdmin approves the org (sets org.status = active)
- *   - And user.status is set to active as part of approval
- */
 export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
   const { org_name, gst_no, admin_name, email, password, phone, employee_count, description } = dto;
 
-  // Pre-flight checks outside transaction to give clear errors
   const existingEmail = await User.findOne({ where: { email } });
   if (existingEmail) {
     throw new Error('EMAIL_TAKEN');
@@ -63,7 +44,6 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
   const password_hash = await hashPassword(password);
 
   const result = await sequelize.transaction(async (t) => {
-    // Step 1: Create the organization (inactive until superadmin approves)
     const org = await Organization.create(
       {
         tenant_id,
@@ -76,7 +56,6 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
       { transaction: t }
     );
 
-    // Step 2: Seed the org_admin role for this tenant
     const role = await Role.create(
       {
         tenant_id,
@@ -87,7 +66,6 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
       { transaction: t }
     );
 
-    // Step 3: Create the admin user (pending — tied to org approval)
     const user = await User.create(
       {
         tenant_id,
@@ -121,20 +99,6 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
   };
 };
 
-// ─── LOGIN ─────────────────────────────────────────────────────────────────
-
-/**
- * Login with email + password.
- *
- * Guards (in order):
- *   1. User must exist
- *   2. Password must match
- *   3. Organization must be active (approved by superadmin)
- *   4. User must be active
- *
- * SuperAdmin login: if email matches SUPERADMIN_EMAIL env var, skip org checks
- * and return a token with isSuperAdmin = true.
- */
 export const loginUser = async (dto: LoginDto) => {
   const { email, password } = dto;
 
