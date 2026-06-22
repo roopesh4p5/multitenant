@@ -9,6 +9,7 @@ import {
 } from '../models';
 import { hashPassword, verifyPassword } from '../utils/password.util';
 import { signToken } from '../utils/jwt.util';
+import { createTenantSlug } from '../utils/slug.util';
 
 export interface RegisterOrgAdminDto {
   org_name: string;
@@ -29,6 +30,11 @@ export interface LoginDto {
 
 export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
   const { org_name, gst_no, admin_name, email, password, phone, employee_count, description } = dto;
+  const slug = createTenantSlug(org_name);
+
+  if (!slug) {
+    throw new Error('INVALID_ORG_NAME');
+  }
 
   const existingEmail = await User.findOne({ where: { email } });
   if (existingEmail) {
@@ -40,6 +46,11 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
     throw new Error('GST_TAKEN');
   }
 
+  const existingSlug = await Organization.findOne({ where: { slug } });
+  if (existingSlug) {
+    throw new Error('ORG_SLUG_TAKEN');
+  }
+
   const tenant_id = uuidv4();
   const password_hash = await hashPassword(password);
 
@@ -48,6 +59,7 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
       {
         tenant_id,
         org_name,
+        slug,
         gst_no,
         status: OrgStatus.INACTIVE,
         employee_count: typeof employee_count === 'number' ? employee_count : 0,
@@ -90,6 +102,7 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
     user_id: result.user.id,
     organization: {
       org_name: result.org.org_name,
+      slug: result.org.slug,
       gst_no: result.org.gst_no,
       employee_count: result.org.employee_count,
       description: result.org.description,

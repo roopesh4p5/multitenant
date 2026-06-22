@@ -8,37 +8,14 @@ import {
   ForeignKey,
 } from 'sequelize';
 
-/**
- * Actions that can be recorded in the approval history.
- * Matches the User status lifecycle transitions.
- */
+
 export enum ApprovalAction {
   APPROVED = 'approved',
   REJECTED = 'rejected',
   PENDING = 'pending',   // e.g., reverting to pending for re-review
 }
 
-/**
- * APPROVALHISTORY — Immutable audit trail for user status transitions.
- *
- * This table is APPEND-ONLY. Records must never be updated or deleted.
- * It captures:
- *   WHO (performed_by) did WHAT (action) to WHOM (user_id) and WHY (remarks).
- *
- * Edge cases handled:
- * - `performed_by` is NULLABLE — system-initiated transitions (e.g., auto-expiry)
- *   have no human actor. SET NULL on delete preserves history even if the admin
- *   account is removed.
- * - `user_id` uses RESTRICT on delete — you cannot delete a user who has approval
- *   history (compliance requirement: audit trail must be preserved). Archive/soft-
- *   delete the user instead.
- * - `remarks` is nullable — not all transitions require a reason, but rejections
- *   should always include one (enforced in service layer).
- * - No `updated_at` — this model is immutable by design. A new row is always
- *   inserted for each transition.
- * - Index on `[user_id, created_at]` supports efficient timeline queries:
- *   "show all approval history for this user, newest first".
- */
+
 export class ApprovalHistory extends Model<
   InferAttributes<ApprovalHistory>,
   InferCreationAttributes<ApprovalHistory>

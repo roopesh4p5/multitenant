@@ -53,6 +53,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
+    if (err.message === 'ORG_SLUG_TAKEN') {
+      res.status(409).json({
+        success: false,
+        message: 'An organization with this tenant URL already exists',
+      });
+      return;
+    }
+    if (err.message === 'INVALID_ORG_NAME') {
+      res.status(400).json({
+        success: false,
+        message: 'Organization name must contain at least one letter or number',
+      });
+      return;
+    }
     console.error('[register]', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }

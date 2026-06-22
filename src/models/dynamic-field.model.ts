@@ -11,6 +11,10 @@ import {
  * Types of dynamic fields a tenant can define.
  * - text:      Free-form string input.
  * - number:    Numeric input (int or float — validation_rules specifies min/max).
+ * - phone:     Phone number input with configurable country/format rules.
+ * - email:     Email input with optional domain validation.
+ * - pincode:   Postal/ZIP/pincode input with length/pattern rules.
+ * - group:     Nested collection of child dynamic fields.
  * - date:      Date/datetime picker.
  * - dropdown:  Select from a predefined list (validation_rules.options = string[]).
  * - file:      File upload — stored path/URL in FieldValues.value.
@@ -18,9 +22,21 @@ import {
 export enum DynamicFieldType {
   TEXT = 'text',
   NUMBER = 'number',
+  PHONE = 'phone',
+  EMAIL = 'email',
+  PINCODE = 'pincode',
+  GROUP = 'group',
   DATE = 'date',
   DROPDOWN = 'dropdown',
   FILE = 'file',
+}
+
+export interface GroupFieldDefinition {
+  field_name: string;
+  field_type: DynamicFieldType;
+  required?: boolean;
+  validation_rules?: ValidationRules | null;
+  fields?: GroupFieldDefinition[];
 }
 
 /**
@@ -28,6 +44,10 @@ export enum DynamicFieldType {
  *
  * text:     { minLength?: number; maxLength?: number; pattern?: string }
  * number:   { min?: number; max?: number; integer?: boolean }
+ * phone:    { countryCode?: string; pattern?: string; minLength?: number; maxLength?: number }
+ * email:    { allowedDomains?: string[]; blockedDomains?: string[] }
+ * pincode:  { countryCode?: string; pattern?: string; length?: number }
+ * group:    { fields: GroupFieldDefinition[]; allowMultiple?: boolean; minItems?: number; maxItems?: number }
  * date:     { minDate?: string; maxDate?: string; format?: string }
  * dropdown: { options: string[]; allowMultiple?: boolean }
  * file:     { allowedMimeTypes?: string[]; maxSizeMb?: number }
@@ -43,6 +63,15 @@ export interface ValidationRules {
   min?: number;
   max?: number;
   integer?: boolean;
+  // phone/email/pincode
+  countryCode?: string;
+  length?: number;
+  allowedDomains?: string[];
+  blockedDomains?: string[];
+  // group
+  fields?: GroupFieldDefinition[];
+  minItems?: number;
+  maxItems?: number;
   // date
   minDate?: string;
   maxDate?: string;

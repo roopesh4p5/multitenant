@@ -39,6 +39,7 @@ export class Organization extends Model<
   declare id: CreationOptional<bigint>;
   declare tenant_id: string;                      // UUID — globally unique per tenant
   declare org_name: string;
+  declare slug: string;
   declare gst_no: string;                          // GST number — globally unique
   declare employee_count: CreationOptional<number>;
   declare description: CreationOptional<string | null>;
@@ -62,6 +63,15 @@ export class Organization extends Model<
         org_name: {
           type: DataTypes.STRING,
           allowNull: false,
+        },
+        slug: {
+          type: DataTypes.STRING,
+          allowNull: false,
+          unique: true,
+          validate: {
+            is: /^[a-z0-9]+$/,
+          },
+          comment: 'Public tenant slug used for subdomain routing, e.g. pacewisdom',
         },
         gst_no: {
           type: DataTypes.STRING,

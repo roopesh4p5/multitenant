@@ -19,6 +19,11 @@ module.exports = {
         type: Sequelize.STRING,
         allowNull: false,
       },
+      slug: {
+        type: Sequelize.STRING,
+        allowNull: false,
+        unique: true,
+      },
       gst_no: {
         type: Sequelize.STRING,
         allowNull: false,

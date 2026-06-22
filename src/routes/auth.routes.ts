@@ -25,6 +25,8 @@ const router = Router();
  *             properties:
  *               org_name:
  *                 type: string
+ *                 description: Used to generate the tenant slug. "Pace Wisdom" becomes "pacewisdom".
+ *                 example: Pace Wisdom
  *               gst_no:
  *                 type: string
  *               employee_count:
@@ -43,12 +45,12 @@ const router = Router();
  *               phone:
  *                 type: string
  *             example:
- *               org_name: Acme Corp
+ *               org_name: Pace Wisdom
  *               gst_no: 27AAPFU0939F1ZV
  *               employee_count: 10
  *               description: "My tenant organization"
  *               admin_name: John Doe
- *               email: john@acme.com
+ *               email: john@pacewisdom.com
  *               password: Password123!
  *               phone: 9876543210
  *     responses:
@@ -58,6 +60,25 @@ const router = Router();
  *           application/json:
  *             schema:
  *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     tenant_id:
+ *                       type: string
+ *                       format: uuid
+ *                     organization:
+ *                       type: object
+ *                       properties:
+ *                         org_name:
+ *                           type: string
+ *                           example: Pace Wisdom
+ *                         slug:
+ *                           type: string
+ *                           example: pacewisdom
  *       '400':
  *         description: Invalid request payload.
  *         content:
@@ -65,7 +86,7 @@ const router = Router();
  *             schema:
  *               type: object
  *       '409':
- *         description: Email or GST number already registered.
+ *         description: Email, GST number, or generated tenant slug already registered.
  *         content:
  *           application/json:
  *             schema:

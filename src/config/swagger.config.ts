@@ -39,6 +39,14 @@ const options: swaggerJsdoc.Options = {
         description:
           'SuperAdmin-only endpoints for reviewing and approving organizations',
       },
+      {
+        name: 'Schema',
+        description: 'Tenant-scoped employee schema field management',
+      },
+      {
+        name: 'Public',
+        description: 'Public tenant bootstrap endpoints used by tenant frontend URLs',
+      },
     ],
   },
   apis: ['./src/routes/*.ts'],

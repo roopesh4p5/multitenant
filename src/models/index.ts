@@ -245,4 +245,4 @@ export { UserStatus } from './user.model';
 export { InvitationStatus } from './invitation.model';
 export { DynamicFieldType } from './dynamic-field.model';
 export { ApprovalAction } from './approval-history.model';
-export type { ValidationRules } from './dynamic-field.model';
+export type { GroupFieldDefinition, ValidationRules } from './dynamic-field.model';

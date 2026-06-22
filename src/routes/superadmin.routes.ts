@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import { listOrgs, approveOrg } from '../controllers/superadmin.controller';
+import { authenticate, requireSuperAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
+router.use(authenticate, requireSuperAdmin);
 
 /**
  * @openapi
