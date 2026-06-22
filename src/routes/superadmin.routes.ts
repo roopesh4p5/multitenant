@@ -3,7 +3,6 @@ import { listOrgs, approveOrg } from '../controllers/superadmin.controller';
 
 const router = Router();
 
-// These endpoints are open for PoC use and do not require authentication.
 
 /**
  * @openapi

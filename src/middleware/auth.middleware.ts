@@ -44,3 +44,52 @@ export const requireSuperAdmin = (
   }
   next();
 };
+
+export const requireTenant = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication required' });
+    return;
+  }
+
+  if (req.user.isSuperAdmin || !req.user.tenantId || req.user.tenantId === 'system') {
+    res.status(403).json({ success: false, message: 'Tenant access required' });
+    return;
+  }
+
+  next();
+};
+
+export const restrictTenantAccess = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (!req.user) {
+    res.status(401).json({ success: false, message: 'Authentication required' });
+    return;
+  }
+
+  if (req.user.isSuperAdmin) {
+    next();
+    return;
+  }
+
+  const requestedTenantId =
+    req.params.tenant_id ??
+    req.params.tenantId ??
+    req.query.tenant_id ??
+    req.query.tenantId ??
+    req.body?.tenant_id ??
+    req.body?.tenantId;
+
+  if (requestedTenantId && String(requestedTenantId) !== req.user.tenantId) {
+    res.status(403).json({ success: false, message: 'Cross-tenant access denied' });
+    return;
+  }
+
+  next();
+};
