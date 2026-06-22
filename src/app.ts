@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
+import path from 'path';
 import { sequelize } from './config/dbconfig';
 import './models';
 
@@ -11,13 +12,18 @@ import authRoutes from './routes/auth.routes';
 import superadminRoutes from './routes/superadmin.routes';
 import schemaRoutes from './routes/schema.routes';
 import publicRoutes from './routes/public.routes';
+import viewRoutes from './routes/view.routes';
 
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+
 app.use(express.json());
 
+app.use('/', viewRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/schema', schemaRoutes);

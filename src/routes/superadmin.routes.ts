@@ -106,18 +106,6 @@ router.get('/orgs', listOrgs);
  *                   example: false
  *                 message:
  *                   type: string
- *       '409':
- *         description: Organization already reviewed.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
  */
 router.patch('/orgs/:id/approve', approveOrg);
 

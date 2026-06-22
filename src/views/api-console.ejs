@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="min-h-screen bg-zinc-50 text-zinc-950">
+    <header class="border-b border-zinc-200 bg-white">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div>
+          <h1 class="text-xl font-semibold">Multitenant API Console</h1>
+          <p class="text-sm text-zinc-500">Auth, superadmin, schema, and public bootstrap APIs</p>
+        </div>
+        <a href="/api-docs" class="rounded-md border border-zinc-300 px-3 py-2 text-sm font-medium hover:bg-zinc-100">Swagger</a>
+      </div>
+    </header>
+
+    <main class="mx-auto grid max-w-7xl gap-6 px-6 py-6 lg:grid-cols-[280px_1fr]">
+      <aside class="space-y-4">
+        <section class="rounded-lg border border-zinc-200 bg-white p-4">
+          <label class="text-sm font-medium" for="baseUrl">Base URL</label>
+          <input id="baseUrl" class="mt-2 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm" value="<%= baseUrl %>" />
+        </section>
+
+        <section class="rounded-lg border border-zinc-200 bg-white p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold">JWT Token</h2>
+            <button id="clearToken" class="rounded-md border border-zinc-300 px-2 py-1 text-xs hover:bg-zinc-100">Clear</button>
+          </div>
+          <textarea id="token" rows="7" class="mt-2 w-full rounded-md border border-zinc-300 px-3 py-2 text-xs" placeholder="Login stores token here"></textarea>
+        </section>
+
+        <nav class="rounded-lg border border-zinc-200 bg-white p-2">
+          <a href="#auth" class="block rounded-md px-3 py-2 text-sm hover:bg-zinc-100">Auth</a>
+          <a href="#superadmin" class="block rounded-md px-3 py-2 text-sm hover:bg-zinc-100">SuperAdmin</a>
+          <a href="#schema" class="block rounded-md px-3 py-2 text-sm hover:bg-zinc-100">Schema</a>
+          <a href="#public" class="block rounded-md px-3 py-2 text-sm hover:bg-zinc-100">Public</a>
+        </nav>
+      </aside>
+
+      <div class="space-y-6">
+        <section id="auth" class="rounded-lg border border-zinc-200 bg-white p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Auth</h2>
+            <span class="text-xs text-zinc-500">/api/auth</span>
+          </div>
+
+          <div class="grid gap-4 xl:grid-cols-2">
+            <form class="space-y-3" data-api-form data-method="POST" data-path="/api/auth/register">
+              <h3 class="font-medium">Register Organization Admin</h3>
+              <input name="org_name" class="input" placeholder="Organization name" value="Pace Wisdom" />
+              <input name="gst_no" class="input" placeholder="GST number" value="27AAPFU0939F1ZV" />
+              <input name="employee_count" class="input" type="number" placeholder="Employee count" value="10" />
+              <input name="description" class="input" placeholder="Description" value="My tenant organization" />
+              <input name="admin_name" class="input" placeholder="Admin name" value="John Doe" />
+              <input name="email" class="input" placeholder="Email" value="john@pacewisdom.com" />
+              <input name="password" class="input" type="password" placeholder="Password" value="Password123!" />
+              <input name="phone" class="input" placeholder="Phone" value="9876543210" />
+              <button class="btn-primary" type="submit">Register</button>
+            </form>
+
+            <form class="space-y-3" data-api-form data-method="POST" data-path="/api/auth/login" data-store-token="true">
+              <h3 class="font-medium">Login</h3>
+              <input name="email" class="input" placeholder="Email" />
+              <input name="password" class="input" type="password" placeholder="Password" />
+              <button class="btn-primary" type="submit">Login</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="superadmin" class="rounded-lg border border-zinc-200 bg-white p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">SuperAdmin</h2>
+            <span class="text-xs text-zinc-500">Bearer token required</span>
+          </div>
+
+          <div class="grid gap-4 xl:grid-cols-2">
+            <form class="space-y-3" data-api-form data-method="GET" data-path="/api/superadmin/orgs" data-auth="true">
+              <h3 class="font-medium">List Organizations</h3>
+              <select name="status" class="input">
+                <option value="">inactive</option>
+                <option value="all">all</option>
+                <option value="active">active</option>
+                <option value="inactive">inactive</option>
+                <option value="suspended">suspended</option>
+              </select>
+              <button class="btn-primary" type="submit">Fetch Orgs</button>
+            </form>
+
+            <form class="space-y-3" data-api-form data-method="PATCH" data-path-template="/api/superadmin/orgs/{id}/approve" data-auth="true">
+              <h3 class="font-medium">Approve or Reject Organization</h3>
+              <input name="id" data-path-param="true" class="input" placeholder="Organization tenant UUID" />
+              <select name="action" class="input">
+                <option value="approve">approve</option>
+                <option value="reject">reject</option>
+              </select>
+              <input name="remarks" class="input" placeholder="Remarks for rejection" />
+              <button class="btn-primary" type="submit">Submit Review</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="schema" class="rounded-lg border border-zinc-200 bg-white p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Schema</h2>
+            <span class="text-xs text-zinc-500">Tenant admin token required</span>
+          </div>
+
+          <div class="grid gap-4 xl:grid-cols-2">
+            <form class="space-y-3" data-api-form data-method="GET" data-path="/api/schema/fields" data-auth="true">
+              <h3 class="font-medium">List Fields</h3>
+              <button class="btn-primary" type="submit">Fetch Fields</button>
+            </form>
+
+            <form class="space-y-3" data-api-form data-method="GET" data-path-template="/api/schema/fields/{id}" data-auth="true">
+              <h3 class="font-medium">Get Field</h3>
+              <input name="id" data-path-param="true" class="input" placeholder="Field ID" />
+              <button class="btn-primary" type="submit">Fetch Field</button>
+            </form>
+
+            <form class="space-y-3" data-api-form data-method="POST" data-path="/api/schema/fields" data-auth="true">
+              <h3 class="font-medium">Create Field</h3>
+              <input name="field_name" class="input" placeholder="Field name" value="personal_email" />
+              <select name="field_type" class="input">
+                <option value="text">text</option>
+                <option value="number">number</option>
+                <option value="phone">phone</option>
+                <option value="email" selected>email</option>
+                <option value="pincode">pincode</option>
+                <option value="group">group</option>
+                <option value="date">date</option>
+                <option value="dropdown">dropdown</option>
+                <option value="file">file</option>
+              </select>
+              <label class="flex items-center gap-2 text-sm"><input name="required" type="checkbox" checked /> Required</label>
+              <input name="display_order" class="input" type="number" value="1" />
+              <textarea name="validation_rules" data-json="true" rows="5" class="input font-mono text-xs">{"allowedDomains":["company.com"]}</textarea>
+              <button class="btn-primary" type="submit">Create Field</button>
+            </form>
+
+            <form class="space-y-3" data-api-form data-method="PATCH" data-path-template="/api/schema/fields/{id}" data-auth="true">
+              <h3 class="font-medium">Update Field</h3>
+              <input name="id" data-path-param="true" class="input" placeholder="Field ID" />
+              <input name="field_name" class="input" placeholder="Field name" />
+              <select name="field_type" class="input">
+                <option value="">keep existing</option>
+                <option value="text">text</option>
+                <option value="number">number</option>
+                <option value="phone">phone</option>
+                <option value="email">email</option>
+                <option value="pincode">pincode</option>
+                <option value="group">group</option>
+                <option value="date">date</option>
+                <option value="dropdown">dropdown</option>
+                <option value="file">file</option>
+              </select>
+              <input name="display_order" class="input" type="number" placeholder="Display order" />
+              <textarea name="validation_rules" data-json="true" rows="5" class="input font-mono text-xs" placeholder='{"minLength":2}'></textarea>
+              <button class="btn-primary" type="submit">Update Field</button>
+            </form>
+
+            <form class="space-y-3" data-api-form data-method="DELETE" data-path-template="/api/schema/fields/{id}" data-auth="true">
+              <h3 class="font-medium">Delete Field</h3>
+              <input name="id" data-path-param="true" class="input" placeholder="Field ID" />
+              <button class="btn-danger" type="submit">Delete Field</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="public" class="rounded-lg border border-zinc-200 bg-white p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Public</h2>
+            <span class="text-xs text-zinc-500">No token required</span>
+          </div>
+
+          <form class="max-w-xl space-y-3" data-api-form data-method="GET" data-path="/api/public/bootstrap">
+            <h3 class="font-medium">Tenant Bootstrap</h3>
+            <input name="tenant" class="input" placeholder="Tenant slug" value="pacewisdom" />
+            <button class="btn-primary" type="submit">Fetch Bootstrap</button>
+          </form>
+        </section>
+
+        <section class="rounded-lg border border-zinc-200 bg-zinc-950 p-5 text-zinc-50">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Response</h2>
+            <button id="clearResponse" class="rounded-md border border-zinc-700 px-3 py-1 text-sm hover:bg-zinc-800">Clear</button>
+          </div>
+          <pre id="responseBox" class="max-h-[520px] overflow-auto whitespace-pre-wrap text-sm"></pre>
+        </section>
+      </div>
+    </main>
+
+    <style>
+      .input {
+        width: 100%;
+        border-radius: 0.375rem;
+        border: 1px solid rgb(212 212 216);
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+      }
+      .btn-primary {
+        border-radius: 0.375rem;
+        background: rgb(39 39 42);
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: white;
+      }
+      .btn-primary:hover {
+        background: rgb(63 63 70);
+      }
+      .btn-danger {
+        border-radius: 0.375rem;
+        background: rgb(185 28 28);
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: white;
+      }
+      .btn-danger:hover {
+        background: rgb(153 27 27);
+      }
+    </style>
+
+    <script>
+      const tokenEl = document.getElementById('token');
+      const responseBox = document.getElementById('responseBox');
+      const storedToken = localStorage.getItem('apiConsoleToken');
+      if (storedToken) tokenEl.value = storedToken;
+
+      document.getElementById('clearToken').addEventListener('click', () => {
+        localStorage.removeItem('apiConsoleToken');
+        tokenEl.value = '';
+      });
+
+      document.getElementById('clearResponse').addEventListener('click', () => {
+        responseBox.textContent = '';
+      });
+
+      tokenEl.addEventListener('input', () => {
+        localStorage.setItem('apiConsoleToken', tokenEl.value.trim());
+      });
+
+      const parseValue = (input) => {
+        if (input.type === 'checkbox') return input.checked;
+        if (input.type === 'number') return input.value === '' ? undefined : Number(input.value);
+        if (input.dataset.json === 'true') {
+          if (!input.value.trim()) return undefined;
+          return JSON.parse(input.value);
+        }
+        return input.value.trim() === '' ? undefined : input.value.trim();
+      };
+
+      const buildRequest = (form) => {
+        const method = form.dataset.method;
+        let path = form.dataset.path || form.dataset.pathTemplate;
+        const body = {};
+        const query = new URLSearchParams();
+
+        for (const input of form.elements) {
+          if (!input.name || input.tagName === 'BUTTON') continue;
+
+          const value = parseValue(input);
+          if (value === undefined) continue;
+
+          if (input.dataset.pathParam === 'true') {
+            path = path.replace(`{${input.name}}`, encodeURIComponent(value));
+            continue;
+          }
+
+          if (method === 'GET') {
+            query.set(input.name, value);
+          } else {
+            body[input.name] = value;
+          }
+        }
+
+        const queryString = query.toString();
+        return {
+          method,
+          url: `${document.getElementById('baseUrl').value}${path}${queryString ? `?${queryString}` : ''}`,
+          body,
+        };
+      };
+
+      const renderResponse = async (response) => {
+        const text = await response.text();
+        let payload = text;
+        try {
+          payload = JSON.stringify(JSON.parse(text), null, 2);
+        } catch {
+          payload = text || '(empty response)';
+        }
+        responseBox.textContent = `${response.status} ${response.statusText}\n\n${payload}`;
+      };
+
+      for (const form of document.querySelectorAll('[data-api-form]')) {
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+
+          try {
+            const request = buildRequest(form);
+            const headers = {};
+
+            if (request.method !== 'GET') {
+              headers['Content-Type'] = 'application/json';
+            }
+
+            if (form.dataset.auth === 'true') {
+              headers.Authorization = `Bearer ${tokenEl.value.trim()}`;
+            }
+
+            const response = await fetch(request.url, {
+              method: request.method,
+              headers,
+              body: request.method === 'GET' ? undefined : JSON.stringify(request.body),
+            });
+
+            await renderResponse(response);
+
+            if (form.dataset.storeToken === 'true' && response.ok) {
+              const data = JSON.parse(responseBox.textContent.split('\n\n').slice(1).join('\n\n'));
+              if (data.data && data.data.token) {
+                tokenEl.value = data.data.token;
+                localStorage.setItem('apiConsoleToken', data.data.token);
+              }
+            }
+          } catch (err) {
+            responseBox.textContent = err instanceof Error ? err.message : String(err);
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
