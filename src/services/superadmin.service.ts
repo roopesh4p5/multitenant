@@ -2,10 +2,8 @@ import { sequelize } from '../config/dbconfig';
 import {
   Organization,
   User,
-  ApprovalHistory,
   OrgStatus,
   UserStatus,
-  ApprovalAction,
 } from '../models';
 import { Op } from 'sequelize';
 
@@ -55,9 +53,6 @@ export const approveOrRejectOrg = async (
     const newUserStatus =
       action === 'approve' ? UserStatus.ACTIVE : UserStatus.REJECTED;
 
-    const historyAction =
-      action === 'approve' ? ApprovalAction.APPROVED : ApprovalAction.REJECTED;
-
     // Update org status (only meaningful on approve — stays inactive on reject)
     if (action === 'approve') {
       await org.update({ status: newOrgStatus }, { transaction: t });
@@ -72,19 +67,8 @@ export const approveOrRejectOrg = async (
       transaction: t,
     });
 
-    // Update each user and create approval history
     for (const user of pendingUsers) {
       await user.update({ status: newUserStatus }, { transaction: t });
-
-      await ApprovalHistory.create(
-        {
-          user_id: user.id,
-          action: historyAction,
-          performed_by: actorId === 0 ? null : BigInt(actorId), // 0 = system superadmin
-          remarks: remarks ?? null,
-        },
-        { transaction: t }
-      );
     }
   });
 

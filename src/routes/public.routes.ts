@@ -11,9 +11,7 @@ const router = Router();
  *       - Public
  *     summary: Resolve tenant by subdomain or slug and return registration bootstrap data.
  *     description: |
- *       Use this from tenant-specific frontend URLs. For `pacewisdom.myapp.com`,
- *       call this endpoint with that Host header, or pass `?tenant=pacewisdom`
- *       in local development.
+ *       Use this from tenant-specific frontend URLs in local development.
  *     parameters:
  *       - in: query
  *         name: tenant

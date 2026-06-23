@@ -44,6 +44,10 @@ const options: swaggerJsdoc.Options = {
         description: 'Tenant-scoped employee schema field management',
       },
       {
+        name: 'Employee',
+        description: 'Employee registration, authentication, profile and schema validation',
+      },
+      {
         name: 'Public',
         description: 'Public tenant bootstrap endpoints used by tenant frontend URLs',
       },

@@ -1,9 +1,9 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
 
 export interface JwtPayload {
-  userId: number;
+  userId: number | bigint;
   tenantId: string;
-  roleId: number | null;
+  roleId: number | bigint | null;
   email: string;
   isSuperAdmin: boolean;
 }

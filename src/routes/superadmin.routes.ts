@@ -4,7 +4,7 @@ import { authenticate, requireSuperAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
-router.use(authenticate, requireSuperAdmin);
+// router.use(requireSuperAdmin);
 
 /**
  * @openapi

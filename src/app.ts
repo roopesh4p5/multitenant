@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.routes';
 import superadminRoutes from './routes/superadmin.routes';
 import schemaRoutes from './routes/schema.routes';
 import publicRoutes from './routes/public.routes';
+import employeeRoutes from './routes/employee.routes';
 import viewRoutes from './routes/view.routes';
 
 dotenv.config();
@@ -27,6 +28,7 @@ app.use('/', viewRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/schema', schemaRoutes);
+app.use('/api/employee', employeeRoutes);
 app.use('/api/public', publicRoutes);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

@@ -26,7 +26,6 @@ import { User } from './user.model';
 import { Invitation } from './invitation.model';
 import { EmployeeProfile } from './employee-profile.model';
 import { FieldValue } from './field-value.model';
-import { ApprovalHistory } from './approval-history.model';
 
 // ─── 1. INITIALIZE ALL MODELS ──────────────────────────────────────────────
 
@@ -39,7 +38,6 @@ User.initModel(sequelize);
 Invitation.initModel(sequelize);
 EmployeeProfile.initModel(sequelize);
 FieldValue.initModel(sequelize);
-ApprovalHistory.initModel(sequelize);
 
 // ─── 2. DEFINE ALL ASSOCIATIONS ───────────────────────────────────────────
 //
@@ -202,28 +200,6 @@ FieldValue.belongsTo(DynamicField, {
   as: 'field',
 });
 
-// ── APPROVAL HISTORY ─────────────────────────────────────────────────────
-
-// User → ApprovalHistory (user is the subject of approvals)
-User.hasMany(ApprovalHistory, {
-  foreignKey: 'user_id',
-  as: 'approvalHistory',
-});
-ApprovalHistory.belongsTo(User, {
-  foreignKey: 'user_id',
-  as: 'subject',
-});
-
-// ApprovalHistory → User (performed_by — the admin actor)
-ApprovalHistory.belongsTo(User, {
-  foreignKey: 'performed_by',
-  as: 'actor',
-});
-User.hasMany(ApprovalHistory, {
-  foreignKey: 'performed_by',
-  as: 'performedApprovals',
-});
-
 // ─── 3. EXPORTS ───────────────────────────────────────────────────────────
 
 export {
@@ -236,7 +212,6 @@ export {
   Invitation,
   EmployeeProfile,
   FieldValue,
-  ApprovalHistory,
 };
 
 // Re-export enums for convenience
@@ -244,5 +219,4 @@ export { OrgStatus } from './organization.model';
 export { UserStatus } from './user.model';
 export { InvitationStatus } from './invitation.model';
 export { DynamicFieldType } from './dynamic-field.model';
-export { ApprovalAction } from './approval-history.model';
 export type { GroupFieldDefinition, ValidationRules } from './dynamic-field.model';
