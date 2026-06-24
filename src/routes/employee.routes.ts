@@ -1,14 +1,22 @@
 import { Router } from 'express';
+import multer from 'multer';
 import {
   employeeSignup,
   employeeLogin,
-  getProfile,
-  updateProfile,
-  validateData,
+  getProfile
 } from '../controllers/employee.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import {
+  bulkUploadEmployees,
+  downloadErrorReport,
+} from '../controllers/bulk-upload.controller';
+import {
+  authenticate,
+  requireTenant,
+  restrictTenantAccess,
+} from '../middleware/auth.middleware';
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 /**
  * @openapi
@@ -20,7 +28,7 @@ const router = Router();
  *     description: |
  *       Employee registers with their email and creates their account.
  *       Tenant is resolved from subdomain or ?tenant=slug query parameter.
- *       Employee starts in PENDING status, awaiting admin approval.
+ *       Employee account is activated immediately after signup.
  *     parameters:
  *       - in: query
  *         name: tenant
@@ -28,7 +36,7 @@ const router = Router();
  *         schema:
  *           type: string
  *           example: pacewisdom
- *         description: Optional tenant slug for local development.
+ *         description: Employee registered successfully.
  *     requestBody:
  *       required: true
  *       content:
@@ -78,9 +86,9 @@ const router = Router();
  *                 success:
  *                   type: boolean
  *                   example: true
- *                 message:
+*                 message:
  *                   type: string
- *                   example: Employee registered successfully. Awaiting admin approval.
+*                   example: Employee registered successfully.
  *                 data:
  *                   type: object
  *                   properties:
@@ -94,7 +102,7 @@ const router = Router();
  *                       type: string
  *                     status:
  *                       type: string
- *                       example: pending
+*                       example: active
  *       '400':
  *         description: Invalid request payload.
  *       '409':
@@ -213,86 +221,35 @@ router.post('/login', employeeLogin);
  */
 router.get('/profile', authenticate, getProfile);
 
-/**
- * @openapi
- * /api/employee/profile:
- *   put:
- *     tags:
- *       - Employee
- *     summary: Update employee's personal information.
- *     description: |
- *       Updates name and/or phone.
- *       Schema field values are updated via schema API.
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               phone:
- *                 type: string
- *             example:
- *               name: John Doe Updated
- *               phone: 9876543211
- *     responses:
- *       '200':
- *         description: Profile updated.
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: Profile updated successfully
- *       '400':
- *         description: No fields to update.
- *       '401':
- *         description: Not authenticated.
- */
-router.put('/profile', authenticate, updateProfile);
 
 /**
  * @openapi
- * /api/employee/validate:
+ * /api/employee/bulk-upload:
  *   post:
  *     tags:
  *       - Employee
- *     summary: Validate employee field values against schema.
+ *     summary: Bulk upload employees via Excel.
  *     description: |
- *       Validates field values without saving them.
- *       Used for form validation before bulk upload or submission.
- *       Returns validation errors if any.
+ *       Allows tenant admin to upload an Excel file containing list of employees.
+ *       The Excel file must contain `name`, `email`, `password`, `phone` (optional), and any tenant-defined fields.
+ *       Valid rows will be processed and created as pending employees.
+ *       Invalid rows will be collected into an error report Excel sheet.
  *     security:
  *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
- *             required:
- *               - fieldValues
  *             properties:
- *               fieldValues:
- *                 type: object
- *                 description: Field name to value mapping
- *                 additionalProperties: true
- *                 example:
- *                   first_name: John
- *                   department: Sales
- *                   employee_id: 12345
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Excel file containing employee records (.xlsx)
  *     responses:
  *       '200':
- *         description: Validation result.
+ *         description: Bulk upload completed.
  *         content:
  *           application/json:
  *             schema:
@@ -300,27 +257,70 @@ router.put('/profile', authenticate, updateProfile);
  *               properties:
  *                 success:
  *                   type: boolean
+ *                 message:
+ *                   type: string
  *                 data:
  *                   type: object
  *                   properties:
- *                     valid:
- *                       type: boolean
- *                     errors:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           field_name:
- *                             type: string
- *                           field_id:
- *                             type: number
- *                           error:
- *                             type: string
+ *                     totalRows:
+ *                       type: integer
+ *                     successCount:
+ *                       type: integer
+ *                     errorCount:
+ *                       type: integer
+ *                     errorReportId:
+ *                       type: string
+ *                       nullable: true
  *       '400':
- *         description: Invalid request.
+ *         description: Bad request (e.g. missing file).
  *       '401':
- *         description: Not authenticated.
+ *         description: Unauthorized.
+ *       '403':
+ *         description: Forbidden (Tenant access required).
  */
-router.post('/validate', authenticate, validateData);
+router.post(
+  '/bulk-upload',
+  authenticate,
+  requireTenant,
+  restrictTenantAccess,
+  upload.single('file'),
+  bulkUploadEmployees
+);
+
+/**
+ * @openapi
+ * /api/employee/bulk-upload/errors/{reportId}:
+ *   get:
+ *     tags:
+ *       - Employee
+ *     summary: Download generated bulk upload error report.
+ *     description: Downloads the Excel error report containing validation failures per row.
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: reportId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The UUID of the error report.
+ *     responses:
+ *       '200':
+ *         description: Excel report file.
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       '404':
+ *         description: Report not found.
+ */
+router.get(
+  '/bulk-upload/errors/:reportId',
+  authenticate,
+  requireTenant,
+  downloadErrorReport
+);
 
 export default router;

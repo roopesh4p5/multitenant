@@ -25,7 +25,7 @@ export const listOrgs = async (req: Request, res: Response): Promise<void> => {
 
     res.status(200).json({ success: true, data: orgs, count: orgs.length });
   } catch (err) {
-    console.error('[listOrgs]', err);
+    console.error('listOrgs', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -48,7 +48,6 @@ export const approveOrg = async (req: Request, res: Response): Promise<void> => 
     return;
   }
 
-  // add the reson if u rejecting it
   if (action === 'reject' && !remarks?.trim()) {
     res.status(400).json({
       success: false,
@@ -74,7 +73,7 @@ export const approveOrg = async (req: Request, res: Response): Promise<void> => 
       });
       return;
     }
-    console.error('[approveOrg]', err);
+    console.error('approveOrg', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

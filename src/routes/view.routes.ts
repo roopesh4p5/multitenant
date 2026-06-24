@@ -2,6 +2,10 @@ import { Router } from 'express';
 
 const router = Router();
 
+
+// i needed some kind of UI 
+// came across this ejs api console, so added it here for now
+
 router.get('/', (_req, res) => {
   res.redirect('/ui');
 });

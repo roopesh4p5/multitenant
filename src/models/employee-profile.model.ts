@@ -8,25 +8,7 @@ import {
   ForeignKey,
 } from 'sequelize';
 
-/**
- * EMPLOYEEPROFILE — Extended employee data for a user, with an approval workflow.
- *
- * Relationship to User:
- * - One user → one employee profile (enforced by UNIQUE on `user_id`).
- * - A user must exist before a profile is created.
- * - `approved_by` references the admin user who approved the profile.
- *
- * Edge cases handled:
- * - `user_id` is UNIQUE — prevents creating duplicate profiles for the same user.
- * - `approved_by` is NULLABLE — profile starts in an unapproved state with no approver.
- *   When a superadmin approves the profile, both `approved_by` and `approved_at` are set.
- * - `approved_by` uses SET NULL on delete — if the approving admin's account is removed,
- *   the profile record is preserved and the approver reference is cleared.
- * - `tenant_id` is redundant with the user's tenant but is stored here for efficient
- *   tenant-scoped queries on profiles without joining the users table.
- * - Self-referential approval (user approving their own profile) must be prevented
- *   in the service layer — cannot be enforced at the DB level without a CHECK constraint.
- */
+
 export class EmployeeProfile extends Model<
   InferAttributes<EmployeeProfile>,
   InferCreationAttributes<EmployeeProfile>

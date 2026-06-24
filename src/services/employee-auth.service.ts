@@ -1,19 +1,26 @@
-import { v4 as uuidv4 } from 'uuid';
 import { sequelize } from '../config/dbconfig';
 import {
   User,
   UserStatus,
   EmployeeProfile,
   Organization,
+  DynamicField,
+  DynamicFieldType,
+  FieldValue,
 } from '../models';
 import { hashPassword, verifyPassword } from '../utils/password.util';
 import { signToken } from '../utils/jwt.util';
+import {
+  validateEmployeeData,
+  coerceFieldValue,
+} from './schema-validator.service';
 
 export interface EmployeeSignupDto {
   email: string;
   password: string;
   name: string;
   phone?: string;
+  fieldValues: Record<string, any>;
 }
 
 export interface EmployeeLoginDto {
@@ -21,21 +28,9 @@ export interface EmployeeLoginDto {
   password: string;
 }
 
-/**
- * Employee signup — creates a new employee within a tenant.
- *
- * Flow:
- * 1. Verify tenant is active and approved
- * 2. Check email is unique within tenant
- * 3. Create user with PENDING status
- * 4. Create associated employee profile
- * 5. Return employee ID and status
- *
- * Note: Employee account creation doesn't grant immediate access.
- * Access is granted after admin approval (status → ACTIVE).
- */
+
 export const signupEmployee = async (dto: EmployeeSignupDto, tenantId: string) => {
-  const { email, password, name, phone } = dto;
+  const { email, password, name, phone, fieldValues } = dto;
 
   // Verify tenant exists and is active
   const tenant = await Organization.findOne({
@@ -62,10 +57,22 @@ export const signupEmployee = async (dto: EmployeeSignupDto, tenantId: string) =
     throw new Error('EMAIL_TAKEN_IN_TENANT');
   }
 
+  if (!fieldValues || typeof fieldValues !== 'object' || Array.isArray(fieldValues)) {
+    const err = new Error('INVALID_FIELD_VALUES');
+    throw err;
+  }
+
+  const validationResult = await validateEmployeeData(fieldValues, tenantId);
+  if (!validationResult.valid) {
+    const err = new Error('SCHEMA_VALIDATION_FAILED') as Error & { validationErrors?: any };
+    err.validationErrors = validationResult.errors;
+    throw err;
+  }
+
   const password_hash = await hashPassword(password);
 
   const result = await sequelize.transaction(async (t) => {
-    // Create user with PENDING status
+    // Create user with ACTIVE status (no admin approval required)
     const user = await User.create(
       {
         tenant_id: tenantId,
@@ -73,7 +80,7 @@ export const signupEmployee = async (dto: EmployeeSignupDto, tenantId: string) =
         password_hash,
         name,
         phone: phone || null,
-        status: UserStatus.PENDING,
+        status: UserStatus.ACTIVE,
         role_id: null, // Employee has no role initially
       },
       { transaction: t }
@@ -85,10 +92,39 @@ export const signupEmployee = async (dto: EmployeeSignupDto, tenantId: string) =
         user_id: user.id,
         tenant_id: tenantId,
         approved_by: null,
-        approved_at: null,
+        approved_at: new Date(), // mark approved immediately
       },
       { transaction: t }
     );
+
+    const schemaFields = await DynamicField.findAll({
+      where: {
+        tenant_id: tenantId,
+        active: true,
+      },
+      transaction: t,
+    });
+
+    const fieldMap = new Map(schemaFields.map((field) => [field.field_name, field]));
+
+    for (const [fieldName, value] of Object.entries(fieldValues)) {
+      const schemaField = fieldMap.get(fieldName);
+      if (!schemaField) {
+        throw new Error(`UNKNOWN_SCHEMA_FIELD:${fieldName}`);
+      }
+      if (value === undefined || value === null || value === '') {
+        continue;
+      }
+
+      await FieldValue.create(
+        {
+          employee_id: profile.id,
+          field_id: schemaField.id,
+          value: coerceFieldValue(schemaField.field_type, value),
+        },
+        { transaction: t }
+      );
+    }
 
     return {
       user_id: user.id,
@@ -135,22 +171,9 @@ export const loginEmployee = async (
     throw new Error('INVALID_CREDENTIALS');
   }
 
-  // Check user status
+  // Ensure user exists and password is valid. Approval and status are handled at creation.
   if (user.status !== UserStatus.ACTIVE) {
     throw new Error('USER_NOT_ACTIVE');
-  }
-
-  // Verify employee profile is approved
-  const profile = await EmployeeProfile.findOne({
-    where: { user_id: user.id },
-  });
-
-  if (!profile) {
-    throw new Error('PROFILE_NOT_FOUND');
-  }
-
-  if (!profile.approved_at) {
-    throw new Error('PROFILE_NOT_APPROVED');
   }
 
   // Generate JWT token
@@ -178,6 +201,31 @@ export const loginEmployee = async (
  * Get employee profile with field values.
  * Validates that user belongs to the tenant making the request.
  */
+const parseFieldValue = (
+  fieldType: DynamicFieldType,
+  storedValue: string,
+  validationRules: any
+): any => {
+  if (fieldType === DynamicFieldType.GROUP) {
+    try {
+      return JSON.parse(storedValue);
+    } catch {
+      return storedValue;
+    }
+  }
+
+  if (fieldType === DynamicFieldType.NUMBER) {
+    const num = Number(storedValue);
+    return Number.isNaN(num) ? storedValue : num;
+  }
+
+  if (fieldType === DynamicFieldType.DROPDOWN && validationRules?.allowMultiple) {
+    return storedValue.split(',').map((value) => value.trim());
+  }
+
+  return storedValue;
+};
+
 export const getEmployeeProfile = async (
   employeeId: number,
   tenantId: string
@@ -204,6 +252,29 @@ export const getEmployeeProfile = async (
     throw new Error('PROFILE_NOT_FOUND');
   }
 
+  const values = await FieldValue.findAll({
+    where: { employee_id: profile.id },
+    include: [
+      {
+        model: DynamicField,
+        as: 'field',
+        attributes: ['field_name', 'field_type', 'validation_rules'],
+      },
+    ],
+  });
+
+  const fieldValues = values.reduce<Record<string, any>>((acc, item: any) => {
+    if (!item.field) {
+      return acc;
+    }
+    acc[item.field.field_name] = parseFieldValue(
+      item.field.field_type,
+      item.value,
+      item.field.validation_rules
+    );
+    return acc;
+  }, {});
+
   return {
     user_id: user.id,
     profile_id: profile.id,
@@ -215,6 +286,7 @@ export const getEmployeeProfile = async (
     approved_at: profile.approved_at,
     created_at: user.created_at,
     updated_at: user.updated_at,
+    fieldValues,
   };
 };
 

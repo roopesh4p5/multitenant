@@ -1,19 +1,3 @@
-/**
- * models/index.ts — Central model registry and association hub.
- *
- * This file is the SINGLE SOURCE OF TRUTH for:
- * 1. Initializing all Sequelize models (calling model.initModel(sequelize))
- * 2. Defining all model associations (prevents circular import issues)
- * 3. Exporting all models for use across the application
- *
- * Import order matters — models with no FKs must be initialized before models
- * that reference them. The order below follows dependency depth:
- *   Layer 0 (no deps):   Permission, Organization
- *   Layer 1 (deps L0):   Role, DynamicField
- *   Layer 2 (deps L1):   RolePermission, User
- *   Layer 3 (deps L2):   Invitation, EmployeeProfile, ApprovalHistory
- *   Layer 4 (deps L3):   FieldValue
- */
 
 import { sequelize } from '../config/dbconfig';
 
@@ -39,18 +23,7 @@ Invitation.initModel(sequelize);
 EmployeeProfile.initModel(sequelize);
 FieldValue.initModel(sequelize);
 
-// ─── 2. DEFINE ALL ASSOCIATIONS ───────────────────────────────────────────
-//
-// Association strategy:
-//   - BelongsTo  → adds FK to the calling model (source has the FK column)
-//   - HasOne/HasMany → reverse of BelongsTo (no FK added, just the query helper)
-//   - BelongsToMany → through a junction model
-//
-// All associations are defined here to avoid circular imports between model files.
 
-// ── RBAC ──────────────────────────────────────────────────────────────────
-
-// Role ↔ Permission (many-to-many via RolePermission)
 Role.belongsToMany(Permission, {
   through: RolePermission,
   foreignKey: 'role_id',

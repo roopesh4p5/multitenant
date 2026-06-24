@@ -7,31 +7,13 @@ import {
   CreationOptional,
 } from 'sequelize';
 
-/**
- * Valid organization statuses.
- * - active:    Fully operational; users can be created and log in.
- * - inactive:  Temporarily disabled; login is blocked but data is preserved.
- * - suspended: Forcibly suspended (e.g., payment failure); all access denied.
- */
+
 export enum OrgStatus {
   ACTIVE = 'active',
   INACTIVE = 'inactive',
   SUSPENDED = 'suspended',
 }
 
-/**
- * ORGANIZATION — The top-level tenant entity.
- *
- * Edge cases handled:
- * - `tenant_id` is UNIQUE — enforces exactly one Organization per tenant.
- *   This is the multitenant anchor: all other tenant-scoped data hangs off this UUID.
- * - `gst_no` is globally UNIQUE — GST numbers are government-issued and must not collide
- *   across tenants either.
- * - `employee_count` is a cached counter (INT). The actual source of truth is the
- *   count of EmployeeProfiles. This can be kept in sync via Sequelize hooks or a
- *   DB trigger (not enforced here).
- * - `status` enum controls the operational state of the entire tenant org.
- */
 export class Organization extends Model<
   InferAttributes<Organization>,
   InferCreationAttributes<Organization>

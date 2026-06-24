@@ -3,19 +3,11 @@ import {
   signupEmployee,
   loginEmployee,
   getEmployeeProfile,
-  updateEmployeeProfile,
 } from '../services/employee-auth.service';
 import { validateEmployeeData } from '../services/schema-validator.service';
 import { getTenantIdFromRequest as getTenantFromRequest } from '../utils/tenant.util';
 
-/**
- * Employee signup endpoint
- * POST /api/employee/signup
- *
- * Register a new employee within a tenant.
- * Email must be unique within the tenant.
- * Employee starts in PENDING status, awaiting admin approval.
- */
+
 export const employeeSignup = async (req: Request, res: Response): Promise<void> => {
   const { email, password, name, phone, fieldValues } = req.body;
 
@@ -35,14 +27,14 @@ export const employeeSignup = async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  // Email validation
+  // check email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     res.status(400).json({ success: false, message: 'Invalid email format' });
     return;
   }
 
-  // Password validation
+  // check password
   if (password.length < 8) {
     res.status(400).json({
       success: false,
@@ -53,9 +45,11 @@ export const employeeSignup = async (req: Request, res: Response): Promise<void>
 
   try {
     const tenantId = await getTenantFromRequest(req);
+    console.log('[employeeSignup] tenant', tenantId, 'email', email);
 
     const validationResult = await validateEmployeeData(fieldValues, tenantId);
     if (!validationResult.valid) {
+      console.log('[employeeSignup] validation failed', validationResult.errors);
       res.status(400).json({
         success: false,
         message: 'Signup field values do not match tenant schema',
@@ -65,14 +59,14 @@ export const employeeSignup = async (req: Request, res: Response): Promise<void>
     }
 
     const result = await signupEmployee(
-      { email, password, name, phone },
+      { email, password, name, phone, fieldValues },
       tenantId
     );
 
     res.status(201).json({
       success: true,
       data: result,
-      message: 'Employee registered successfully. Awaiting admin approval.',
+      message: 'Employee registered successfully.',
     });
   } catch (err: any) {
     if (err.message === 'TENANT_NOT_FOUND') {
@@ -96,18 +90,35 @@ export const employeeSignup = async (req: Request, res: Response): Promise<void>
       });
       return;
     }
+    if (err.message === 'INVALID_FIELD_VALUES') {
+      res.status(400).json({
+        success: false,
+        message: 'fieldValues must be a non-empty object',
+      });
+      return;
+    }
+    if (err.message === 'SCHEMA_VALIDATION_FAILED') {
+      res.status(400).json({
+        success: false,
+        message: 'Signup field values do not match tenant schema',
+        errors: err.validationErrors || [],
+      });
+      return;
+    }
+    if (typeof err.message === 'string' && err.message.startsWith('UNKNOWN_SCHEMA_FIELD:')) {
+      res.status(400).json({
+        success: false,
+        message: 'Signup contains a field that is not defined in tenant schema',
+        field: err.message.replace('UNKNOWN_SCHEMA_FIELD:', ''),
+      });
+      return;
+    }
     console.error('[employeeSignup]', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
-/**
- * Employee login endpoint
- * POST /api/employee/login
- *
- * Authenticate an employee and return JWT token.
- * Employee must be in ACTIVE status and profile must be approved.
- */
+
 export const employeeLogin = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
@@ -121,6 +132,7 @@ export const employeeLogin = async (req: Request, res: Response): Promise<void> 
 
   try {
     const tenantId = await getTenantFromRequest(req);
+    console.log('[employeeLogin] tenant', tenantId, 'email', email);
 
     const result = await loginEmployee({ email, password }, tenantId);
 
@@ -143,13 +155,7 @@ export const employeeLogin = async (req: Request, res: Response): Promise<void> 
       });
       return;
     }
-    if (err.message === 'PROFILE_NOT_APPROVED') {
-      res.status(403).json({
-        success: false,
-        message: 'Your profile is pending admin approval',
-      });
-      return;
-    }
+    // PROFILE_NOT_APPROVED handling removed since employees are active immediately
     if (err.message === 'PROFILE_NOT_FOUND') {
       res.status(404).json({
         success: false,
@@ -162,13 +168,7 @@ export const employeeLogin = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-/**
- * Get employee profile endpoint
- * GET /api/employee/profile
- *
- * Retrieve current authenticated employee's profile information.
- * Requires authentication.
- */
+
 export const getProfile = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.user) {
@@ -176,6 +176,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
+    console.log('[getProfile] user', req.user.userId, 'tenant', req.user.tenantId);
     const result = await getEmployeeProfile(Number(req.user.userId), req.user.tenantId);
 
     res.status(200).json({
@@ -202,92 +203,4 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-/**
- * Update employee profile endpoint
- * PUT /api/employee/profile
- *
- * Update personal information (name, phone).
- * Schema fields are updated via schema API.
- * Requires authentication.
- */
-export const updateProfile = async (req: Request, res: Response): Promise<void> => {
-  const { name, phone } = req.body;
 
-  if (!name && !phone) {
-    res.status(400).json({
-      success: false,
-      message: 'At least one field (name or phone) must be provided',
-    });
-    return;
-  }
-
-  try {
-    if (!req.user) {
-      res.status(401).json({ success: false, message: 'Not authenticated' });
-      return;
-    }
-
-    const updates: { name?: string; phone?: string } = {};
-    if (name) updates.name = name;
-    if (phone) updates.phone = phone;
-
-    const result = await updateEmployeeProfile(
-      Number(req.user.userId),
-      req.user.tenantId,
-      updates
-    );
-
-    res.status(200).json({
-      success: true,
-      data: result,
-      message: 'Profile updated successfully',
-    });
-  } catch (err: any) {
-    if (err.message === 'EMPLOYEE_NOT_FOUND') {
-      res.status(404).json({
-        success: false,
-        message: 'Employee not found',
-      });
-      return;
-    }
-    console.error('[updateProfile]', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-};
-
-/**
- * Validate employee data against schema endpoint
- * POST /api/employee/validate
- *
- * Validates field values without saving them.
- * Used before bulk upload or form submission.
- * Requires authentication.
- */
-export const validateData = async (req: Request, res: Response): Promise<void> => {
-  const { fieldValues } = req.body;
-
-  if (!fieldValues || typeof fieldValues !== 'object') {
-    res.status(400).json({
-      success: false,
-      message: 'fieldValues object is required',
-    });
-    return;
-  }
-
-  try {
-    if (!req.user) {
-      res.status(401).json({ success: false, message: 'Not authenticated' });
-      return;
-    }
-
-    const result = await validateEmployeeData(fieldValues, req.user.tenantId);
-
-    res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (err: any) {
-    console.error('[validateData]', err);
-    res.status(500).json({ success: false, message: 'Internal server error' });
-  }
-};

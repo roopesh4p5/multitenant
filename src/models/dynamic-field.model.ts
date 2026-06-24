@@ -7,18 +7,6 @@ import {
   CreationOptional,
 } from 'sequelize';
 
-/**
- * Types of dynamic fields a tenant can define.
- * - text:      Free-form string input.
- * - number:    Numeric input (int or float — validation_rules specifies min/max).
- * - phone:     Phone number input with configurable country/format rules.
- * - email:     Email input with optional domain validation.
- * - pincode:   Postal/ZIP/pincode input with length/pattern rules.
- * - group:     Nested collection of child dynamic fields.
- * - date:      Date/datetime picker.
- * - dropdown:  Select from a predefined list (validation_rules.options = string[]).
- * - file:      File upload — stored path/URL in FieldValues.value.
- */
 export enum DynamicFieldType {
   TEXT = 'text',
   NUMBER = 'number',
@@ -39,21 +27,7 @@ export interface GroupFieldDefinition {
   fields?: GroupFieldDefinition[];
 }
 
-/**
- * Shape of `validation_rules` JSON for each field type:
- *
- * text:     { minLength?: number; maxLength?: number; pattern?: string }
- * number:   { min?: number; max?: number; integer?: boolean }
- * phone:    { countryCode?: string; pattern?: string; minLength?: number; maxLength?: number }
- * email:    { allowedDomains?: string[]; blockedDomains?: string[] }
- * pincode:  { countryCode?: string; pattern?: string; length?: number }
- * group:    { fields: GroupFieldDefinition[]; allowMultiple?: boolean; minItems?: number; maxItems?: number }
- * date:     { minDate?: string; maxDate?: string; format?: string }
- * dropdown: { options: string[]; allowMultiple?: boolean }
- * file:     { allowedMimeTypes?: string[]; maxSizeMb?: number }
- *
- * Stored as JSONB for PostgreSQL operator support.
- */
+
 export interface ValidationRules {
   // text
   minLength?: number;
@@ -84,22 +58,6 @@ export interface ValidationRules {
   maxSizeMb?: number;
 }
 
-/**
- * DYNAMICFIELD — Tenant-defined custom field schema.
- *
- * Edge cases handled:
- * - `[tenant_id, field_name]` unique index — no duplicate field names within a tenant,
- *   but different tenants can use the same field names.
- * - `active` flag allows disabling a field without deleting it (and losing FieldValues).
- *   Service layer should skip inactive fields during validation.
- * - `required` flag — if true, FieldValues must have an entry for this field before
- *   an EmployeeProfile can be marked as complete. Enforced in service layer.
- * - `display_order` controls the rendering order in the UI — allows drag-and-drop
- *   reordering without re-creating fields.
- * - `validation_rules` is JSONB (not JSON) — enables PostgreSQL's @> containment
- *   operators for querying (e.g., find all dropdown fields with a specific option).
- * - No FK to an `organizations` table — scoped via `tenant_id` matching Organization.
- */
 export class DynamicField extends Model<
   InferAttributes<DynamicField>,
   InferCreationAttributes<DynamicField>

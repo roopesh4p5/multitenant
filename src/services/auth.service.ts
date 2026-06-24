@@ -115,24 +115,6 @@ export const registerOrgAdmin = async (dto: RegisterOrgAdminDto) => {
 export const loginUser = async (dto: LoginDto) => {
   const { email, password } = dto;
 
-  // Superadmin shortcut — env-based identity for Phase 1 simplicity
-  const superAdminEmail = process.env.SUPERADMIN_EMAIL;
-  const superAdminPassword = process.env.SUPERADMIN_PASSWORD;
-
-  if (superAdminEmail && email === superAdminEmail) {
-    if (!superAdminPassword || password !== superAdminPassword) {
-      throw new Error('INVALID_CREDENTIALS');
-    }
-    const token = signToken({
-      userId: 0,
-      tenantId: 'system',
-      roleId: null,
-      email: superAdminEmail,
-      isSuperAdmin: true,
-    });
-    return { token, isSuperAdmin: true };
-  }
-
   // Regular org admin login
   const user = await User.findOne({
     where: { email },

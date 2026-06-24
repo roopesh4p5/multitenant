@@ -11,17 +11,6 @@ import {
 import { Permission } from './permission.model';
 import { RolePermission } from './role-permission.model';
 
-/**
- * ROLE — Tenant-scoped roles that can be assigned to users.
- *
- * Edge cases handled:
- * - `is_system_role` flag distinguishes seeded system roles (Admin, Member, etc.)
- *   from custom roles created by a tenant. System roles should NOT be deleted.
- * - `[tenant_id, role_name]` unique index prevents duplicate role names within a tenant
- *   while allowing the same name across different tenants.
- * - Roles are soft-linked to a tenant via `tenant_id` UUID (no FK to a tenants table,
- *   tenant provisioning is handled externally).
- */
 export class Role extends Model<
   InferAttributes<Role>,
   InferCreationAttributes<Role>

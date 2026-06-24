@@ -2,10 +2,8 @@ import { Request, Response } from 'express';
 import { getTenantId } from '../utils/tenant.util';
 import {
   createSchemaField,
-  deleteSchemaField,
-  getSchemaField,
+  createSchemaFieldsBulk,
   listSchemaFields,
-  updateSchemaField,
 } from '../services/schema.service';
 
 const handleSchemaError = (res: Response, err: unknown): void => {
@@ -21,6 +19,17 @@ const handleSchemaError = (res: Response, err: unknown): void => {
       success: false,
       message: 'A schema field with this name already exists for this tenant',
     });
+    return;
+  }
+
+  if (message === 'INVALID_SCHEMA_PAYLOAD') {
+    res.status(400).json({ success: false, message: 'Payload must be a non-empty array of schema field objects' });
+    return;
+  }
+
+  if (message.startsWith('DUPLICATE_IN_PAYLOAD:')) {
+    const dup = message.replace('DUPLICATE_IN_PAYLOAD:', '');
+    res.status(400).json({ success: false, message: `Duplicate field in payload: ${dup}` });
     return;
   }
 
@@ -43,7 +52,7 @@ const handleSchemaError = (res: Response, err: unknown): void => {
     return;
   }
 
-  console.error('[schema]', err);
+  console.error('schema', err);
   res.status(500).json({ success: false, message: 'Internal server error' });
 };
 
@@ -56,37 +65,18 @@ export const listFields = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-export const getField = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const field = await getSchemaField(getTenantId(req), String(req.params.id));
-    res.status(200).json({ success: true, data: field });
-  } catch (err) {
-    handleSchemaError(res, err);
-  }
-};
+
 
 export const createField = async (req: Request, res: Response): Promise<void> => {
   try {
-    const field = await createSchemaField(getTenantId(req), req.body);
-    res.status(201).json({ success: true, data: field });
-  } catch (err) {
-    handleSchemaError(res, err);
-  }
-};
+    // Only accept an array payload — one-time bulk schema creation
+    if (!Array.isArray(req.body)) {
+      res.status(400).json({ success: false, message: 'Payload must be an array of schema field objects' });
+      return;
+    }
 
-export const updateField = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const field = await updateSchemaField(getTenantId(req), String(req.params.id), req.body);
-    res.status(200).json({ success: true, data: field });
-  } catch (err) {
-    handleSchemaError(res, err);
-  }
-};
-
-export const removeField = async (req: Request, res: Response): Promise<void> => {
-  try {
-    await deleteSchemaField(getTenantId(req), String(req.params.id));
-    res.status(204).send();
+    const rows = await createSchemaFieldsBulk(getTenantId(req), req.body);
+    res.status(201).json({ success: true, data: rows });
   } catch (err) {
     handleSchemaError(res, err);
   }

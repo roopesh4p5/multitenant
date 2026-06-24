@@ -30,6 +30,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
+    console.log('register-----', org_name, 'email', email);
     const result = await registerOrgAdmin({
       org_name,
       gst_no,
@@ -82,6 +83,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
+    console.log('email -----', email);
     const result = await loginUser({ email, password });
     res.status(200).json({ success: true, data: result });
   } catch (err: any) {

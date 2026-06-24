@@ -24,22 +24,9 @@ export enum InvitationStatus {
   EXPIRED = 'expired',
 }
 
-/**
- * INVITATION — Email-based invitation with signed token and TTL.
- *
- * Edge cases handled:
- * - `token` has a UNIQUE constraint — one-time use token. After acceptance the
- *   status flips to `accepted` and the same token cannot be reused (status check
- *   in service layer).
- * - `invited_by` is NULLABLE (SET NULL on delete) because the first superadmin
- *   invitation may be system-seeded without a user as inviter.
- * - `role_id` is NULLABLE (SET NULL on delete) — if the invited role is deleted
- *   before the invite is accepted, the invitation becomes role-less. Service layer
- *   should validate this before allowing acceptance.
- * - `expires_at` is always set — no open-ended invites. Typical TTL: 72 hours.
- * - Composite index `[tenant_id, email, status]` speeds up "does this email have a
- *   pending invite in this tenant?" queries.
- */
+// email based invitation system for new users to join a tenant. Each invitation is tied to a specific tenant and optionally a role. The invitation has a unique token that the user can use to accept the invite. The status of the invitation tracks whether it is pending, accepted, or expired.
+
+
 export class Invitation extends Model<
   InferAttributes<Invitation>,
   InferCreationAttributes<Invitation>

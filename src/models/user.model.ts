@@ -11,21 +11,7 @@ import {
 } from 'sequelize';
 import { Role } from './role.model';
 
-/**
- * User approval/activity lifecycle:
- *
- *   [pending] ──► [approved] ──► [active]
- *       │                    └──► [inactive]
- *       └──► [rejected]
- *
- * - pending:  Newly registered; awaiting admin approval.
- * - approved: Admin approved; user may now activate (set password, etc.).
- * - rejected: Admin rejected; user cannot log in.
- * - active:   Fully operational account.
- * - inactive: Soft-disabled; no login allowed but data retained.
- *
- * Every transition is recorded in ApprovalHistory.
- */
+
 export enum UserStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
@@ -34,17 +20,6 @@ export enum UserStatus {
   INACTIVE = 'inactive',
 }
 
-/**
- * USER — Tenant-scoped user accounts.
- *
- * Edge cases handled:
- * - Composite unique index `[tenant_id, email]` allows the same email across
- *   different tenants (common in B2B SaaS) but prevents duplicates within a tenant.
- * - `password_hash` stores a bcrypt/argon2 hash — NEVER the plaintext password.
- * - `role_id` is nullable with SET NULL on delete so removing a role doesn't
- *   cascade-delete all users — it simply unsets their role (handled by re-assigning).
- * - `phone` is nullable — not all tenants may require it.
- */
 export class User extends Model<
   InferAttributes<User>,
   InferCreationAttributes<User>

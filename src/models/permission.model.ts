@@ -7,13 +7,7 @@ import {
   CreationOptional,
 } from 'sequelize';
 
-/**
- * PERMISSION — System-wide permission definitions.
- *
- * Permissions are NOT tenant-scoped — they define what actions are possible
- * on what resources across the entire system (e.g., resource="users", action="read").
- * Roles are tenant-scoped and get permissions assigned via RolePermission.
- */
+
 export class Permission extends Model<
   InferAttributes<Permission>,
   InferCreationAttributes<Permission>

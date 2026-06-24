@@ -23,7 +23,7 @@ export const tenantBootstrap = async (
       return;
     }
 
-    console.error('[tenantBootstrap]', err);
+    console.error('tenantBootstrap', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

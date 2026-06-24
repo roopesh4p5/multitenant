@@ -1,4 +1,5 @@
-import { UniqueConstraintError } from 'sequelize';
+import { UniqueConstraintError, Op } from 'sequelize';
+import { sequelize } from '../config/dbconfig';
 import {
   DynamicField,
   DynamicFieldType,
@@ -184,28 +185,6 @@ const validateCreateDto = (dto: SchemaFieldDto): Required<Pick<SchemaFieldDto, '
   };
 };
 
-const validateUpdateDto = (
-  existingFieldType: DynamicFieldType,
-  dto: SchemaFieldDto
-): SchemaFieldDto => {
-  validateCommonDto(dto);
-
-  if (dto.field_name !== undefined) {
-    if (typeof dto.field_name !== 'string' || !dto.field_name.trim()) {
-      throw new Error('field_name cannot be empty');
-    }
-    dto.field_name = normalizeFieldName(dto.field_name);
-  }
-
-  if (dto.field_type !== undefined && !fieldTypes.has(dto.field_type)) {
-    throw new Error('field_type is invalid');
-  }
-
-  const nextFieldType = dto.field_type ?? existingFieldType;
-  validateRulesForType(nextFieldType, dto.validation_rules);
-
-  return dto;
-};
 
 export const listSchemaFields = async (tenantId: string) =>
   DynamicField.findAll({
@@ -215,15 +194,6 @@ export const listSchemaFields = async (tenantId: string) =>
       ['created_at', 'ASC'],
     ],
   });
-
-export const getSchemaField = async (tenantId: string, fieldId: string) => {
-  const field = await DynamicField.findOne({
-    where: { id: fieldId, tenant_id: tenantId },
-  });
-
-  if (!field) throw new Error('SCHEMA_FIELD_NOT_FOUND');
-  return field;
-};
 
 export const createSchemaField = async (tenantId: string, dto: SchemaFieldDto) => {
   const data = validateCreateDto(dto);
@@ -246,17 +216,58 @@ export const createSchemaField = async (tenantId: string, dto: SchemaFieldDto) =
   }
 };
 
-export const updateSchemaField = async (
-  tenantId: string,
-  fieldId: string,
-  dto: SchemaFieldDto
-) => {
-  const field = await getSchemaField(tenantId, fieldId);
-  const data = validateUpdateDto(field.field_type, dto);
+/**
+ * Create multiple schema fields in a single request/transaction.
+ * Validates the entire payload, rejects on duplicates (either in payload
+ * or if any of the field names already exist for the tenant).
+ */
+export const createSchemaFieldsBulk = async (tenantId: string, dtos: SchemaFieldDto[]) => {
+  if (!Array.isArray(dtos) || dtos.length === 0) {
+    throw new Error('INVALID_SCHEMA_PAYLOAD');
+  }
 
+  // Validate and normalize all items first
+  const normalized = dtos.map((d) => validateCreateDto(d));
+
+  // Check for duplicate field_name within the payload
+  const names = normalized.map((n) => n.field_name);
+  const dup = names.find((n, i) => names.indexOf(n) !== i);
+  if (dup) {
+    throw new Error(`DUPLICATE_IN_PAYLOAD:${dup}`);
+  }
+
+  // Check for existing fields in DB
+  const existing = await DynamicField.findAll({
+    where: {
+      tenant_id: tenantId,
+      field_name: { [Op.in]: names },
+    },
+    attributes: ['field_name'],
+  });
+
+  if (existing.length > 0) {
+    // return generic duplicate error to keep API stable
+    throw new Error('SCHEMA_FIELD_DUPLICATE');
+  }
+
+  // Persist all fields in a single transaction
   try {
-    await field.update(data);
-    return field;
+    const rows = await sequelize.transaction(async (t) => {
+      const toCreate = normalized.map((n) => ({
+        tenant_id: tenantId,
+        field_name: n.field_name,
+        field_type: n.field_type,
+        required: n.required ?? false,
+        display_order: n.display_order ?? 0,
+        active: n.active ?? true,
+        validation_rules: n.validation_rules ?? null,
+      }));
+
+      // bulkCreate with returning works on Postgres
+      return await DynamicField.bulkCreate(toCreate, { transaction: t, returning: true });
+    });
+
+    return rows;
   } catch (err) {
     if (err instanceof UniqueConstraintError) {
       throw new Error('SCHEMA_FIELD_DUPLICATE');
@@ -265,7 +276,5 @@ export const updateSchemaField = async (
   }
 };
 
-export const deleteSchemaField = async (tenantId: string, fieldId: string) => {
-  const field = await getSchemaField(tenantId, fieldId);
-  await field.destroy();
-};
+
+

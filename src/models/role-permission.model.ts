@@ -7,15 +7,6 @@ import {
   CreationOptional,
 } from 'sequelize';
 
-/**
- * ROLEPERMISSION — Junction table linking Roles ↔ Permissions.
- *
- * Edge cases handled:
- * - Composite PRIMARY KEY (role_id, permission_id) prevents the same permission
- *   being granted to the same role more than once at the DB constraint level.
- * - `granted_at` provides an audit trail of when the permission was assigned.
- * - No surrogate PK is needed — the composite key is the identity.
- */
 export class RolePermission extends Model<
   InferAttributes<RolePermission>,
   InferCreationAttributes<RolePermission>
